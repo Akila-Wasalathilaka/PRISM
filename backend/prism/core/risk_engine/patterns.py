@@ -3,11 +3,10 @@ PRISM Risk Patterns.
 Deterministic risk detection rules.
 """
 
-from typing import List, Dict
 
 class PatternDetector:
     @staticmethod
-    def detect_risks(diff: str) -> List[Dict[str, str]]:
+    def detect_risks(diff: str) -> list[dict[str, str]]:
         """Scan a diff for known dangerous patterns."""
         risks = []
         if "DROP TABLE" in diff.upper():
