@@ -24,8 +24,8 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
     # 2. Parse payload
     try:
         await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload") from e
 
     # 3. Process based on event type
     # For now, just accept and queue the event
