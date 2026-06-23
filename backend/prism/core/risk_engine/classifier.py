@@ -3,7 +3,6 @@ PRISM File Classifier.
 Maps changed files to risk categories.
 """
 
-from typing import List
 import re
 
 CATEGORY_RULES = {
@@ -12,9 +11,10 @@ CATEGORY_RULES = {
     "infrastructure": [r".*docker-compose.*", r"^k8s/.*", r".*\.tf$"],
 }
 
+
 class FileClassifier:
     @staticmethod
-    def classify_file(filename: str) -> List[str]:
+    def classify_file(filename: str) -> list[str]:
         """Classify a single file path into risk categories."""
         categories = set()
         for category, patterns in CATEGORY_RULES.items():

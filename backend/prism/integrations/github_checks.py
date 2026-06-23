@@ -2,6 +2,7 @@
 GitHub Check Runs Integration (Week 7).
 """
 
+
 class GitHubCheckRunAPI:
     def __init__(self, install_id: int):
         self.install_id = install_id

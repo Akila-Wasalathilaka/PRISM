@@ -3,8 +3,8 @@ PRISM Pull Request Model.
 """
 
 from datetime import datetime
-from typing import Optional
-from sqlalchemy import BigInteger, String, Integer, ForeignKey, DateTime
+
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from prism.db.base import Base, TimestampMixin, UUIDMixin
@@ -12,9 +12,12 @@ from prism.db.base import Base, TimestampMixin, UUIDMixin
 
 class PullRequest(Base, UUIDMixin, TimestampMixin):
     """GitHub pull request being analyzed by PRISM."""
+
     __tablename__ = "pull_requests"
 
-    repo_id: Mapped[str] = mapped_column(ForeignKey("repositories.id", ondelete="CASCADE"), index=True)
+    repo_id: Mapped[str] = mapped_column(
+        ForeignKey("repositories.id", ondelete="CASCADE"), index=True
+    )
     github_pr_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
     number: Mapped[int] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String)
@@ -25,4 +28,4 @@ class PullRequest(Base, UUIDMixin, TimestampMixin):
     files_changed: Mapped[int] = mapped_column(Integer, default=0)
     additions: Mapped[int] = mapped_column(Integer, default=0)
     deletions: Mapped[int] = mapped_column(Integer, default=0)
-    merged_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

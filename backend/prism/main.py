@@ -4,8 +4,8 @@ PRISM Backend — Pull Request Risk & Intelligence System
 FastAPI application entry point.
 """
 
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +20,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifecycle manager."""
     # Startup
     import structlog
+
     logger = structlog.get_logger()
     logger.info("prism.startup", version=settings.APP_VERSION, environment=settings.ENVIRONMENT)
     yield

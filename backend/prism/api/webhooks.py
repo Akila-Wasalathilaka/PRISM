@@ -3,9 +3,11 @@ PRISM GitHub Webhooks API.
 """
 
 from typing import Any
-from fastapi import APIRouter, Request, HTTPException
+
+from fastapi import APIRouter, HTTPException, Request
 
 router = APIRouter()
+
 
 @router.post("/github")
 async def github_webhook_receiver(request: Request) -> dict[str, Any]:
@@ -16,12 +18,12 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
     signature = request.headers.get("x-hub-signature-256")
     if not signature:
         raise HTTPException(status_code=401, detail="Missing signature")
-    
+
     event_type = request.headers.get("x-github-event")
-    
+
     # 2. Parse payload
     try:
-        payload = await request.json()
+        await request.json()
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
