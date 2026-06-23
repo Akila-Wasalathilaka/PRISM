@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from prism.api.health import router as health_router
+from prism.api.webhooks import router as webhooks_router
 from prism.config import settings
 
 
@@ -44,5 +45,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
+# Include routers
 app.include_router(health_router, prefix="/api", tags=["health"])
+app.include_router(webhooks_router, prefix="/api/webhooks", tags=["webhooks"])
