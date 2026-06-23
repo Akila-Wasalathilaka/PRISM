@@ -5,7 +5,7 @@ Provides liveness and readiness probes for container orchestration
 and monitoring systems.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -44,7 +44,7 @@ async def health_check() -> HealthResponse:
         status="healthy",
         version=settings.APP_VERSION,
         environment=settings.ENVIRONMENT,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
     )
 
 
