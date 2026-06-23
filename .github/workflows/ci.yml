@@ -50,7 +50,7 @@ jobs:
           cache: "pip"
 
       - name: Install Dependencies
-        run: pip install -e ".[dev,test]"
+        run: pip install ".[dev,test]"
 
       - name: Lint (Ruff)
         run: ruff check .
@@ -84,8 +84,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
 
       - name: Install Dependencies
         run: npm install
