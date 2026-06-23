@@ -1,0 +1,97 @@
+name: PRISM CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Backend Tests ──
+  backend:
+    name: Backend (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: prism
+          POSTGRES_PASSWORD: prism
+          POSTGRES_DB: prism_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: pip install -e ".[dev,test]"
+
+      - name: Lint (Ruff)
+        run: ruff check .
+
+      - name: Format Check (Ruff)
+        run: ruff format --check .
+
+      - name: Type Check (MyPy)
+        run: mypy prism/ --ignore-missing-imports
+        continue-on-error: true
+
+      - name: Test (Pytest)
+        run: pytest --cov=prism --cov-report=xml
+        env:
+          DATABASE_URL: postgresql+asyncpg://prism:prism@localhost:5432/prism_test
+          REDIS_URL: redis://localhost:6379/0
+          ENVIRONMENT: test
+
+  # ── Frontend Tests ──
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Type Check & Build
+        run: npm run build
