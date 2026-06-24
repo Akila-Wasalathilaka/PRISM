@@ -57,7 +57,7 @@ Here is the diff:
                 )
                 response.raise_for_status()
                 data = response.json()
-                
+
                 # Parse the response text as JSON
                 text_response = data["choices"][0]["message"]["content"]
                 # Clean up any potential markdown formatting the AI might sneak in
@@ -65,10 +65,10 @@ Here is the diff:
                 match = re.search(r'\[.*\]', text_response, re.DOTALL)
                 if match:
                     text_response = match.group(0)
-                
+
                 import json
                 ai_risks = json.loads(text_response)
-                
+
                 matches = []
                 for risk in ai_risks:
                     matches.append(
