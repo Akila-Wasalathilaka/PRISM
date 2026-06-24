@@ -41,8 +41,8 @@ jobs:
           $SSH_CMD << 'DEPLOY'
             set -e
 
-            # Sync new code over (preserve .venv, .env, and server.log)
-            rsync -a --exclude='.venv' --exclude='.env' --exclude='__pycache__' --exclude='server.log' \
+            # Sync new code over (preserve .venv, .env, server.log, and dashboard_db.json)
+            rsync -a --exclude='.venv' --exclude='.env' --exclude='__pycache__' --exclude='server.log' --exclude='dashboard_db.json' \
               ~/backend-update/ ~/backend/
 
             # Securely inject the Mistral API key from GitHub Secrets

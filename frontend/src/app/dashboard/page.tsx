@@ -18,6 +18,11 @@ interface Stats {
   high_risk_count: number;
   critical_risk_count: number;
   recent_repos: string[];
+  total_files_analyzed: number;
+  total_lines_added: number;
+  total_lines_deleted: number;
+  auto_merged_count: number;
+  top_categories: { name: string; count: number }[];
 }
 
 export default function Dashboard() {
@@ -173,6 +178,64 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {stats && !loading && analyses.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Project Progress */}
+            <div className="bg-[#161616] border border-gray-800 rounded-xl p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                Project Progress
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-[#1e1e1e] rounded-lg p-3 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 mb-1">Files Analyzed</div>
+                  <div className="text-xl font-bold text-gray-200">{stats.total_files_analyzed}</div>
+                </div>
+                <div className="bg-[#1e1e1e] rounded-lg p-3 border border-green-900/30">
+                  <div className="text-xs text-green-600 mb-1">Lines Added</div>
+                  <div className="text-xl font-bold text-green-500">+{stats.total_lines_added}</div>
+                </div>
+                <div className="bg-[#1e1e1e] rounded-lg p-3 border border-red-900/30">
+                  <div className="text-xs text-red-600 mb-1">Lines Deleted</div>
+                  <div className="text-xl font-bold text-red-500">-{stats.total_lines_deleted}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bot Analytics */}
+            <div className="bg-[#161616] border border-gray-800 rounded-xl p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                Bot Analytics
+              </h3>
+              <div className="flex gap-6 h-full items-start">
+                <div className="bg-[#1e1e1e] rounded-lg p-3 border border-gray-800/50 flex-1">
+                  <div className="text-xs text-gray-500 mb-1">Auto-Merged PRs</div>
+                  <div className="flex items-end gap-2">
+                    <div className="text-2xl font-bold text-purple-400">{stats.auto_merged_count}</div>
+                    <div className="text-xs text-gray-500 mb-1.5">/ {stats.total_analyzed}</div>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="text-xs text-gray-500 mb-2">Top Risk Categories</div>
+                  {stats.top_categories && stats.top_categories.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {stats.top_categories.slice(0, 2).map(cat => (
+                        <div key={cat.name} className="flex justify-between items-center text-xs bg-[#1e1e1e] px-2 py-1 rounded border border-gray-800/50">
+                          <span className="text-gray-300 truncate mr-2" title={cat.name}>{cat.name}</span>
+                          <span className="text-orange-400 font-bold">{cat.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-600 italic">No risks detected yet</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading && analyses.length === 0 ? (
           <div className="flex flex-1 justify-center items-center">

@@ -5,7 +5,9 @@ Receives GitHub App webhook events, verifies signatures, and triggers risk analy
 
 import hashlib
 import hmac
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -21,8 +23,29 @@ from prism.integrations.github_checks import GitHubCheckRunAPI
 
 router = APIRouter()
 
-# In-memory store for recent analyses (used by the dashboard API)
-recent_analyses: list[dict[str, Any]] = []
+DB_FILE = Path("dashboard_db.json")
+
+
+def load_analyses() -> list[dict[str, Any]]:
+    if DB_FILE.exists():
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading dashboard DB: {e}")
+    return []
+
+
+def save_analyses(analyses: list[dict[str, Any]]) -> None:
+    try:
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(analyses, f, indent=2)
+    except Exception as e:
+        print(f"Error saving dashboard DB: {e}")
+
+
+# Persistent store for dashboard
+recent_analyses: list[dict[str, Any]] = load_analyses()
 
 
 def _verify_signature(payload_body: bytes, signature_header: str | None) -> bool:
@@ -205,9 +228,10 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
             "timestamp": datetime.now(UTC).isoformat(),
         }
         recent_analyses.insert(0, analysis_record)
-        # Keep only last 100 analyses in memory
-        if len(recent_analyses) > 100:
+        # Keep only last 500 analyses in memory and storage
+        if len(recent_analyses) > 500:
             recent_analyses.pop()
+        save_analyses(recent_analyses)
 
         return {"status": "processed", "score": score_data["score"], "merged": merged}
 
