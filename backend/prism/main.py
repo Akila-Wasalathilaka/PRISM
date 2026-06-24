@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from prism.api.analyses import router as analyses_router
 from prism.api.health import router as health_router
 from prism.api.webhooks import router as webhooks_router
 from prism.config import settings
@@ -49,3 +50,4 @@ app.add_middleware(
 # Include routers
 app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(webhooks_router, prefix="/api/webhooks", tags=["webhooks"])
+app.include_router(analyses_router, prefix="/api/analyses", tags=["analyses"])
