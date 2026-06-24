@@ -39,7 +39,13 @@ class ImpactAnalyzer:
                 affected_layers.add("Core/Configuration")
             elif "api" in name or "route" in name or "controller" in name:
                 affected_layers.add("API/Routing")
-            elif "frontend" in name or "ui" in name or "component" in name or ".tsx" in name or ".jsx" in name:
+            elif (
+                "frontend" in name
+                or "ui" in name
+                or "component" in name
+                or ".tsx" in name
+                or ".jsx" in name
+            ):
                 affected_layers.add("Frontend/UI")
 
         if not affected_layers:
@@ -47,7 +53,9 @@ class ImpactAnalyzer:
 
         # 2. Check security impact from risk rules
         has_security_impact = any(
-            r.severity in ("critical", "high") for r in risks if "security" in r.message.lower() or "secret" in r.message.lower()
+            r.severity in ("critical", "high")
+            for r in risks
+            if "security" in r.message.lower() or "secret" in r.message.lower()
         )
         if has_security_impact:
             affected_layers.add("Security")
@@ -57,7 +65,13 @@ class ImpactAnalyzer:
         # Medium: >5 files, or API changes
         # Low: isolated UI changes, docs, <5 files
         blast_radius = "Low"
-        if has_database or has_core or has_dependencies or files_changed > 20 or has_security_impact:
+        if (
+            has_database
+            or has_core
+            or has_dependencies
+            or files_changed > 20
+            or has_security_impact
+        ):
             blast_radius = "High"
         elif "API/Routing" in affected_layers or files_changed > 5:
             blast_radius = "Medium"
