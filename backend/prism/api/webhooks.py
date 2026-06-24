@@ -12,9 +12,10 @@ from fastapi import APIRouter, HTTPException, Request
 
 from prism.config import settings
 from prism.core.risk_engine.diff_parser import parse_diff
+from prism.core.risk_engine.impact import ImpactAnalyzer
 from prism.core.risk_engine.patterns import PatternDetector
 from prism.core.risk_engine.scoring import RiskScorer
-from prism.integrations.github import get_pull_request_diff, merge_pull_request
+from prism.integrations.github import get_pull_request_diff, merge_pull_request, post_pr_comment
 from prism.integrations.github_checks import GitHubCheckRunAPI
 
 router = APIRouter()
@@ -42,6 +43,41 @@ def _verify_signature(payload_body: bytes, signature_header: str | None) -> bool
     )
 
     return hmac.compare_digest(expected_sig, signature_header)
+
+
+def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool) -> str:
+    """Generate a beautifully formatted PR comment for the Impact Report."""
+    score = score_data["score"]
+    badge = "🟢 Safe" if score < 30 else ("🟡 Medium Risk" if score < 50 else ("🔴 High Risk" if score < 70 else "🔥 Critical Risk"))
+    
+    lines = [
+        f"## PRISM Codebase Impact Report",
+        f"**Risk Score:** `{score}/100` ({badge})",
+        "",
+        "### 💥 Blast Radius Assessment",
+        f"**Estimated Impact:** `{impact_data['blast_radius']}`",
+        "",
+        f"- **Affected System Layers:** {', '.join(f'`{layer}`' for layer in impact_data['affected_layers'])}",
+        f"- **Code Churn:** {impact_data['files_changed']} files (+{impact_data['additions']} / -{impact_data['deletions']})",
+    ]
+
+    if impact_data['has_security_impact']:
+        lines.append("- ⚠️ **Security Changes Detected!**")
+    if impact_data['has_dependency_impact']:
+        lines.append("- 📦 **Dependency Changes Detected!**")
+    if impact_data['has_database_impact']:
+        lines.append("- 🗄️ **Database Schema/Model Changes Detected!**")
+
+    lines.append("")
+    lines.append("### 🤖 Bot Action")
+    if merged:
+        lines.append("✅ **Zero risks detected.** I have automatically merged this pull request!")
+    elif score == 0:
+        lines.append("✅ No risks detected, but auto-merge is only supported for fully isolated changes.")
+    else:
+        lines.append("⚠️ **Risks detected.** Human review is required. Please check the 'Checks' tab for detailed line-by-line annotations.")
+
+    return "\n".join(lines)
 
 
 @router.post("/github")
@@ -91,14 +127,32 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
             )
             all_risks.extend(file_risks)
 
-        # 4. Calculate comprehensive score
+        # 4. Calculate comprehensive score and structural impact
         score_data = RiskScorer.score_from_diff(parsed_diff, all_risks)
+        impact_data = ImpactAnalyzer.analyze_impact(parsed_diff, all_risks)
 
         # 5. Post rich Check Run
         checks_api = GitHubCheckRunAPI(install_id)
         await checks_api.create_check_run(repo_full_name, head_sha, score_data, all_risks)
 
-        # 6. Store analysis for dashboard
+        # 6. Auto-merge if risk score is 0 and blast radius is low
+        merged = False
+        if score_data["score"] == 0 and impact_data["blast_radius"] == "Low":
+            try:
+                await merge_pull_request(repo_full_name, pr_number, install_id)
+                merged = True
+            except Exception as e:
+                # Log the error but don't fail the webhook response
+                print(f"Failed to auto-merge PR #{pr_number}: {e}")
+
+        # 7. Post the Impact Report as a PR comment
+        report_md = _generate_impact_report(score_data, impact_data, merged)
+        try:
+            await post_pr_comment(repo_full_name, pr_number, install_id, report_md)
+        except Exception as e:
+            print(f"Failed to post PR comment on #{pr_number}: {e}")
+
+        # 8. Store analysis for dashboard
         analysis_record = {
             "repo": repo_full_name,
             "pr_number": pr_number,
@@ -117,16 +171,6 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
         # Keep only last 100 analyses in memory
         if len(recent_analyses) > 100:
             recent_analyses.pop()
-
-        # 7. Auto-merge if risk score is 0
-        merged = False
-        if score_data["score"] == 0:
-            try:
-                await merge_pull_request(repo_full_name, pr_number, install_id)
-                merged = True
-            except Exception as e:
-                # Log the error but don't fail the webhook response
-                print(f"Failed to auto-merge PR #{pr_number}: {e}")
 
         return {"status": "processed", "score": score_data["score"], "merged": merged}
 

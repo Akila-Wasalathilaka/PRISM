@@ -85,3 +85,23 @@ async def merge_pull_request(repo_full_name: str, pr_number: int, install_id: in
         )
         response.raise_for_status()
         return response.json()
+
+
+async def post_pr_comment(repo_full_name: str, pr_number: int, install_id: int, body: str) -> dict:
+    """Post a comment to a pull request."""
+    token = await get_installation_token(install_id)
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"https://api.github.com/repos/{repo_full_name}/issues/{pr_number}/comments",
+            headers={
+                "Authorization": f"token {token}",
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "PRISM-Bot",
+            },
+            json={
+                "body": body,
+            },
+        )
+        response.raise_for_status()
+        return response.json()
