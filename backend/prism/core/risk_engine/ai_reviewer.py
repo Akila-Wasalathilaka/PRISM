@@ -24,7 +24,7 @@ class AIReviewer:
 
         prompt = f"""You are PRISM, an elite automated security and code review bot.
 Analyze the following git diff. Identify any security risks, logic bugs, or bad practices.
-Return ONLY a valid JSON array of objects, with NO markdown formatting, NO backticks. 
+Return ONLY a valid JSON array of objects, with NO markdown formatting, NO backticks.
 If no risks are found, return an empty array [].
 
 Array format:
