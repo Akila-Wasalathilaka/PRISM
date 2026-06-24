@@ -45,7 +45,12 @@ jobs:
             rsync -a --exclude='.venv' --exclude='.env' --exclude='__pycache__' --exclude='server.log' \
               ~/backend-update/ ~/backend/
 
+            # Securely inject the Mistral API key from GitHub Secrets
+            sed -i '/^MISTRAL_API_KEY=/d' ~/backend/.env || true
+            echo 'MISTRAL_API_KEY="${{ secrets.MISTRAL_API_KEY }}"' >> ~/backend/.env
+
             # Install any new/updated dependencies
+
             cd ~/backend
             .venv/bin/pip install . --quiet 2>&1 | tail -5
 
