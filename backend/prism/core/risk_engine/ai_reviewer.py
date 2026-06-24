@@ -22,22 +22,23 @@ class AIReviewer:
 
         url = "https://api.mistral.ai/v1/chat/completions"
 
-        prompt = f"""You are PRISM, an elite automated security and code review bot.
-Analyze the following git diff. Identify any security risks, logic bugs, or bad practices.
-Return ONLY a valid JSON array of objects, with NO markdown formatting, NO backticks.
-If no risks are found, return an empty array [].
+        prompt = f"""You are PRISM, an expert code reviewer. Analyze this diff for security risks, logic bugs, and bad practices.
 
-Array format:
-[
-  {{
-    "file": "filename (if known, or 'Global')",
-    "line": 0 (approximate line number if known, else 0),
-    "message": "A detailed explanation of EXACTLY what the issue is and how to fix it.",
-    "severity": "critical" | "high" | "medium" | "low"
-  }}
-]
+Rules:
+1. Be extremely concise. Keep messages under 2 sentences to save tokens.
+2. DO NOT hallucinate or guess the structure of classes/functions not present in the diff (assume imported objects are correct).
+3. Return ONLY a valid JSON array. No markdown, no backticks.
+4. If no issues, return [].
 
-Here is the diff:
+Format:
+[{{
+  "file": "filename",
+  "line": line_number,
+  "message": "Concise issue description and fix.",
+  "severity": "critical" | "high" | "medium" | "low"
+}}]
+
+Diff:
 {diff_text[:15000]}
 """
 
