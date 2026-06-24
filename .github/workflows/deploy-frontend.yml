@@ -32,8 +32,6 @@ jobs:
 
       - name: Build Static Export
         working-directory: frontend
-        env:
-          NEXT_PUBLIC_API_URL: http://${{ secrets.ORACLE_HOST }}:8000
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
