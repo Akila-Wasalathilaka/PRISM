@@ -101,7 +101,7 @@ def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool, a
         )
     else:
         lines.append(
-            "⚠️ **Risks detected.** Human review is required. Please check the 'Checks' tab for detailed line-by-line annotations."
+            "⚠️ **Action Required:** PRISM has detected potential issues in this Pull Request. Please review the detailed list above, or click the **Checks** tab to see exact line-by-line annotations in the code before merging."
         )
 
     return "\n".join(lines)
