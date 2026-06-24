@@ -61,7 +61,10 @@ Here is the diff:
                 # Parse the response text as JSON
                 text_response = data["choices"][0]["message"]["content"]
                 # Clean up any potential markdown formatting the AI might sneak in
-                text_response = text_response.strip().removeprefix("```json").removesuffix("```").strip()
+                import re
+                match = re.search(r'\[.*\]', text_response, re.DOTALL)
+                if match:
+                    text_response = match.group(0)
                 
                 import json
                 ai_risks = json.loads(text_response)
@@ -70,11 +73,11 @@ Here is the diff:
                 for risk in ai_risks:
                     matches.append(
                         RiskMatch(
-                            file=risk.get("file", "Global"),
-                            line=risk.get("line", 0),
+                            filename=risk.get("file", "Global"),
+                            line_number=risk.get("line", 0),
                             message=f"🤖 **Mistral AI Analysis:** {risk.get('message', 'Risk detected.')}",
                             severity=risk.get("severity", "medium"),
-                            pattern_name="AI Semantic Review",
+                            category="ai_review",
                         )
                     )
                 return matches
