@@ -14,7 +14,7 @@ from prism.config import settings
 from prism.core.risk_engine.ai_reviewer import AIReviewer
 from prism.core.risk_engine.diff_parser import parse_diff
 from prism.core.risk_engine.impact import ImpactAnalyzer
-from prism.core.risk_engine.patterns import PatternDetector
+from prism.core.risk_engine.patterns import PatternDetector, RiskMatch
 from prism.core.risk_engine.scoring import RiskScorer
 from prism.integrations.github import get_pull_request_diff, merge_pull_request, post_pr_comment
 from prism.integrations.github_checks import GitHubCheckRunAPI
@@ -46,7 +46,7 @@ def _verify_signature(payload_body: bytes, signature_header: str | None) -> bool
     return hmac.compare_digest(expected_sig, signature_header)
 
 
-def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool, all_risks: list) -> str:
+def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool, all_risks: list[RiskMatch]) -> str:
     """Generate a beautifully formatted PR comment for the Impact Report."""
     score = score_data["score"]
     badge = (
@@ -101,7 +101,7 @@ def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool, a
         )
     else:
         lines.append(
-            "⚠️ **Risks detected.** Human review is required."
+            "⚠️ **Risks detected.** Human review is required. Please check the 'Checks' tab for detailed line-by-line annotations."
         )
 
     return "\n".join(lines)
