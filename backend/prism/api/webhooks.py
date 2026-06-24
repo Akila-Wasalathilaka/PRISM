@@ -11,10 +11,10 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 
 from prism.config import settings
+from prism.core.risk_engine.ai_reviewer import AIReviewer
 from prism.core.risk_engine.diff_parser import parse_diff
 from prism.core.risk_engine.impact import ImpactAnalyzer
 from prism.core.risk_engine.patterns import PatternDetector
-from prism.core.risk_engine.ai_reviewer import AIReviewer
 from prism.core.risk_engine.scoring import RiskScorer
 from prism.integrations.github import get_pull_request_diff, merge_pull_request, post_pr_comment
 from prism.integrations.github_checks import GitHubCheckRunAPI
