@@ -63,3 +63,25 @@ async def get_pull_request_diff(repo_full_name: str, pr_number: int, install_id:
         )
         response.raise_for_status()
         return response.text
+
+
+async def merge_pull_request(repo_full_name: str, pr_number: int, install_id: int) -> dict:
+    """Automatically merge a pull request via the GitHub API."""
+    token = await get_installation_token(install_id)
+
+    async with httpx.AsyncClient() as client:
+        response = await client.put(
+            f"https://api.github.com/repos/{repo_full_name}/pulls/{pr_number}/merge",
+            headers={
+                "Authorization": f"token {token}",
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "PRISM-Bot",
+            },
+            json={
+                "commit_title": f"Auto-merge PR #{pr_number} by PRISM",
+                "commit_message": "PRISM detected zero risks and automatically merged this pull request.",
+                "merge_method": "squash",
+            },
+        )
+        response.raise_for_status()
+        return response.json()

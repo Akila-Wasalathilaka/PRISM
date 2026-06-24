@@ -14,7 +14,7 @@ from prism.config import settings
 from prism.core.risk_engine.diff_parser import parse_diff
 from prism.core.risk_engine.patterns import PatternDetector
 from prism.core.risk_engine.scoring import RiskScorer
-from prism.integrations.github import get_pull_request_diff
+from prism.integrations.github import get_pull_request_diff, merge_pull_request
 from prism.integrations.github_checks import GitHubCheckRunAPI
 
 router = APIRouter()
@@ -118,6 +118,16 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
         if len(recent_analyses) > 100:
             recent_analyses.pop()
 
-        return {"status": "processed", "score": score_data["score"]}
+        # 7. Auto-merge if risk score is 0
+        merged = False
+        if score_data["score"] == 0:
+            try:
+                await merge_pull_request(repo_full_name, pr_number, install_id)
+                merged = True
+            except Exception as e:
+                # Log the error but don't fail the webhook response
+                print(f"Failed to auto-merge PR #{pr_number}: {e}")
+
+        return {"status": "processed", "score": score_data["score"], "merged": merged}
 
     return {"status": "accepted", "event": event_type}
