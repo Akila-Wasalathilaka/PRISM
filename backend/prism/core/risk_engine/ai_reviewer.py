@@ -48,12 +48,12 @@ Diff:
                     url,
                     headers={
                         "Content-Type": "application/json",
-                        "Authorization": f"Bearer {api_key}"
+                        "Authorization": f"Bearer {api_key}",
                     },
                     json={
                         "model": "mistral-small-latest",
                         "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.1
+                        "temperature": 0.1,
                     },
                 )
                 response.raise_for_status()
@@ -63,11 +63,13 @@ Diff:
                 text_response = data["choices"][0]["message"]["content"]
                 # Clean up any potential markdown formatting the AI might sneak in
                 import re
-                match = re.search(r'\[.*\]', text_response, re.DOTALL)
+
+                match = re.search(r"\[.*\]", text_response, re.DOTALL)
                 if match:
                     text_response = match.group(0)
 
                 import json
+
                 ai_risks = json.loads(text_response)
 
                 matches = []
