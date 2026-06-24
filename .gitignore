@@ -55,6 +55,12 @@ infrastructure/terraform/**/*.tfstate.backup
 infrastructure/terraform/**/*.tfvars
 !infrastructure/terraform/**/*.tfvars.example
 
+# ── Secrets & Keys ──
+*.pem
+*.key
+*.key.pub
+backend.tar.gz
+
 # ── Logs ──
 *.log
 npm-debug.log*

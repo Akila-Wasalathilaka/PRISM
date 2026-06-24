@@ -1,0 +1,67 @@
+name: Deploy Backend to Oracle Cloud
+
+on:
+  push:
+    branches:
+      - main
+      - development
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ORACLE_SSH_KEY }}" > ~/.ssh/oracle_key
+          chmod 600 ~/.ssh/oracle_key
+          ssh-keyscan -H ${{ secrets.ORACLE_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Oracle
+        env:
+          HOST: ${{ secrets.ORACLE_HOST }}
+        run: |
+          # Upload the backend code
+          scp -i ~/.ssh/oracle_key -r backend/ ubuntu@$HOST:~/backend-update/
+
+          # SSH in and swap + restart
+          ssh -i ~/.ssh/oracle_key ubuntu@$HOST << 'DEPLOY'
+            set -e
+
+            # Backup current
+            cp -r ~/backend ~/backend-backup 2>/dev/null || true
+
+            # Copy new files over (preserve .venv and .env)
+            rsync -av --exclude='.venv' --exclude='.env' --exclude='__pycache__' \
+              ~/backend-update/backend/ ~/backend/
+
+            # Install any new dependencies
+            cd ~/backend
+            .venv/bin/pip install . --quiet
+
+            # Restart the server
+            tmux kill-session -t backend 2>/dev/null || true
+            tmux new-session -d -s backend \
+              'cd ~/backend && .venv/bin/uvicorn prism.main:app --host 0.0.0.0 --port 8000'
+
+            # Cleanup
+            rm -rf ~/backend-update ~/backend-backup
+
+            # Verify
+            sleep 3
+            curl -sf http://localhost:8000/api/health || echo "WARNING: Health check failed"
+
+            echo "✅ Backend deployed successfully"
+          DEPLOY
+
+      - name: Cleanup SSH Key
+        if: always()
+        run: rm -f ~/.ssh/oracle_key

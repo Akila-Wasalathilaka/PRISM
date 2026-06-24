@@ -3,10 +3,9 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from prism.config import settings
 from prism.main import app
 
-
-from prism.config import settings
 
 @pytest.fixture
 async def client():
