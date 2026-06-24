@@ -48,10 +48,18 @@ def _verify_signature(payload_body: bytes, signature_header: str | None) -> bool
 def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool) -> str:
     """Generate a beautifully formatted PR comment for the Impact Report."""
     score = score_data["score"]
-    badge = "🟢 Safe" if score < 30 else ("🟡 Medium Risk" if score < 50 else ("🔴 High Risk" if score < 70 else "🔥 Critical Risk"))
-    
+    badge = (
+        "🟢 Safe"
+        if score < 30
+        else (
+            "🟡 Medium Risk"
+            if score < 50
+            else ("🔴 High Risk" if score < 70 else "🔥 Critical Risk")
+        )
+    )
+
     lines = [
-        f"## PRISM Codebase Impact Report",
+        "## PRISM Codebase Impact Report",
         f"**Risk Score:** `{score}/100` ({badge})",
         "",
         "### 💥 Blast Radius Assessment",
@@ -61,11 +69,11 @@ def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool) -
         f"- **Code Churn:** {impact_data['files_changed']} files (+{impact_data['additions']} / -{impact_data['deletions']})",
     ]
 
-    if impact_data['has_security_impact']:
+    if impact_data["has_security_impact"]:
         lines.append("- ⚠️ **Security Changes Detected!**")
-    if impact_data['has_dependency_impact']:
+    if impact_data["has_dependency_impact"]:
         lines.append("- 📦 **Dependency Changes Detected!**")
-    if impact_data['has_database_impact']:
+    if impact_data["has_database_impact"]:
         lines.append("- 🗄️ **Database Schema/Model Changes Detected!**")
 
     lines.append("")
@@ -73,9 +81,13 @@ def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool) -
     if merged:
         lines.append("✅ **Zero risks detected.** I have automatically merged this pull request!")
     elif score == 0:
-        lines.append("✅ No risks detected, but auto-merge is only supported for fully isolated changes.")
+        lines.append(
+            "✅ No risks detected, but auto-merge is only supported for fully isolated changes."
+        )
     else:
-        lines.append("⚠️ **Risks detected.** Human review is required. Please check the 'Checks' tab for detailed line-by-line annotations.")
+        lines.append(
+            "⚠️ **Risks detected.** Human review is required. Please check the 'Checks' tab for detailed line-by-line annotations."
+        )
 
     return "\n".join(lines)
 
