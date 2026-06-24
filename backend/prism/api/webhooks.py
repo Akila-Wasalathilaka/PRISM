@@ -46,7 +46,9 @@ def _verify_signature(payload_body: bytes, signature_header: str | None) -> bool
     return hmac.compare_digest(expected_sig, signature_header)
 
 
-def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool, all_risks: list[RiskMatch]) -> str:
+def _generate_impact_report(
+    score_data: dict, impact_data: dict, merged: bool, all_risks: list[RiskMatch]
+) -> str:
     """Generate a beautifully formatted PR comment for the Impact Report."""
     score = score_data["score"]
     badge = (
@@ -88,7 +90,11 @@ def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool, a
                 continue
             seen.add(key)
             icon = severity_icon.get(risk.severity, "⚪")
-            loc = f" (`{risk.filename}` L{risk.line_number})" if getattr(risk, 'filename', None) else ""
+            loc = (
+                f" (`{risk.filename}` L{risk.line_number})"
+                if getattr(risk, "filename", None)
+                else ""
+            )
             lines.append(f"- {icon} **{risk.severity.upper()}**: {risk.message}{loc}")
 
     lines.append("")
