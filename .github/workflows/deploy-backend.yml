@@ -23,43 +23,49 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.ORACLE_SSH_KEY }}" > ~/.ssh/oracle_key
           chmod 600 ~/.ssh/oracle_key
-          ssh-keyscan -H ${{ secrets.ORACLE_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.ORACLE_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Deploy to Oracle
         env:
           HOST: ${{ secrets.ORACLE_HOST }}
         run: |
-          # Upload the backend code
-          scp -i ~/.ssh/oracle_key -r backend/ ubuntu@$HOST:~/backend-update/
+          SSH_CMD="ssh -i ~/.ssh/oracle_key -o StrictHostKeyChecking=no ubuntu@$HOST"
 
-          # SSH in and swap + restart
-          ssh -i ~/.ssh/oracle_key ubuntu@$HOST << 'DEPLOY'
+          # Create staging directory on remote
+          $SSH_CMD "mkdir -p ~/backend-update"
+
+          # Upload backend code via scp
+          scp -i ~/.ssh/oracle_key -o StrictHostKeyChecking=no -r backend/* ubuntu@$HOST:~/backend-update/
+
+          # SSH in: swap files, install deps, restart server
+          $SSH_CMD << 'DEPLOY'
             set -e
 
-            # Backup current
-            cp -r ~/backend ~/backend-backup 2>/dev/null || true
+            # Sync new code over (preserve .venv, .env, and server.log)
+            rsync -a --exclude='.venv' --exclude='.env' --exclude='__pycache__' --exclude='server.log' \
+              ~/backend-update/ ~/backend/
 
-            # Copy new files over (preserve .venv and .env)
-            rsync -av --exclude='.venv' --exclude='.env' --exclude='__pycache__' \
-              ~/backend-update/backend/ ~/backend/
-
-            # Install any new dependencies
+            # Install any new/updated dependencies
             cd ~/backend
-            .venv/bin/pip install . --quiet
+            .venv/bin/pip install . --quiet 2>&1 | tail -5
 
-            # Restart the server
+            # Restart the uvicorn server via tmux
             tmux kill-session -t backend 2>/dev/null || true
             tmux new-session -d -s backend \
-              'cd ~/backend && .venv/bin/uvicorn prism.main:app --host 0.0.0.0 --port 8000'
+              'cd ~/backend && .venv/bin/uvicorn prism.main:app --host 0.0.0.0 --port 8000 2>&1 | tee server.log'
 
-            # Cleanup
-            rm -rf ~/backend-update ~/backend-backup
+            # Wait for startup and verify
+            sleep 4
+            if curl -sf http://localhost:8000/api/health > /dev/null; then
+              echo "✅ Backend deployed and healthy"
+            else
+              echo "❌ Health check failed — check server.log"
+              cat server.log
+              exit 1
+            fi
 
-            # Verify
-            sleep 3
-            curl -sf http://localhost:8000/api/health || echo "WARNING: Health check failed"
-
-            echo "✅ Backend deployed successfully"
+            # Cleanup staging directory
+            rm -rf ~/backend-update
           DEPLOY
 
       - name: Cleanup SSH Key
