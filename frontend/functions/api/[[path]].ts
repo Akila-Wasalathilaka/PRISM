@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function onRequest(context: any) {
   // context.request contains the incoming request
   // context.env contains env variables
@@ -23,7 +24,7 @@ export async function onRequest(context: any) {
     newResponse.headers.set("Access-Control-Allow-Origin", "*");
     
     return newResponse;
-  } catch (error) {
+  } catch {
     return new Response(JSON.stringify({ error: "Failed to proxy request to backend" }), {
       status: 502,
       headers: { "Content-Type": "application/json" }
