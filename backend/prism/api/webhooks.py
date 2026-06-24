@@ -14,6 +14,7 @@ from prism.config import settings
 from prism.core.risk_engine.diff_parser import parse_diff
 from prism.core.risk_engine.impact import ImpactAnalyzer
 from prism.core.risk_engine.patterns import PatternDetector
+from prism.core.risk_engine.ai_reviewer import AIReviewer
 from prism.core.risk_engine.scoring import RiskScorer
 from prism.integrations.github import get_pull_request_diff, merge_pull_request, post_pr_comment
 from prism.integrations.github_checks import GitHubCheckRunAPI
@@ -138,6 +139,10 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
                 diff_file.filename, diff_file.added_lines, diff_file.added_line_numbers
             )
             all_risks.extend(file_risks)
+
+        # 3.5 AI Semantic Code Review
+        ai_risks = await AIReviewer.analyze_diff(diff_text)
+        all_risks.extend(ai_risks)
 
         # 4. Calculate comprehensive score and structural impact
         score_data = RiskScorer.score_from_diff(parsed_diff, all_risks)
