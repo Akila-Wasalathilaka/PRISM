@@ -46,7 +46,7 @@ def _verify_signature(payload_body: bytes, signature_header: str | None) -> bool
     return hmac.compare_digest(expected_sig, signature_header)
 
 
-def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool) -> str:
+def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool, all_risks: list) -> str:
     """Generate a beautifully formatted PR comment for the Impact Report."""
     score = score_data["score"]
     badge = (
@@ -77,6 +77,20 @@ def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool) -
     if impact_data["has_database_impact"]:
         lines.append("- 🗄️ **Database Schema/Model Changes Detected!**")
 
+    if all_risks:
+        lines.append("")
+        lines.append("### 🚨 Detected Issues")
+        seen = set()
+        severity_icon = {"critical": "🔥", "high": "🔴", "medium": "🟡", "low": "⚪"}
+        for risk in all_risks:
+            key = f"{risk.message}:{risk.filename}"
+            if key in seen:
+                continue
+            seen.add(key)
+            icon = severity_icon.get(risk.severity, "⚪")
+            loc = f" (`{risk.filename}` L{risk.line_number})" if getattr(risk, 'filename', None) else ""
+            lines.append(f"- {icon} **{risk.severity.upper()}**: {risk.message}{loc}")
+
     lines.append("")
     lines.append("### 🤖 Bot Action")
     if merged:
@@ -87,7 +101,7 @@ def _generate_impact_report(score_data: dict, impact_data: dict, merged: bool) -
         )
     else:
         lines.append(
-            "⚠️ **Risks detected.** Human review is required. Please check the 'Checks' tab for detailed line-by-line annotations."
+            "⚠️ **Risks detected.** Human review is required."
         )
 
     return "\n".join(lines)
@@ -163,7 +177,7 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
                 print(f"Failed to auto-merge PR #{pr_number}: {e}")
 
         # 7. Post the Impact Report as a PR comment
-        report_md = _generate_impact_report(score_data, impact_data, merged)
+        report_md = _generate_impact_report(score_data, impact_data, merged, all_risks)
         try:
             await post_pr_comment(repo_full_name, pr_number, install_id, report_md)
         except Exception as e:
