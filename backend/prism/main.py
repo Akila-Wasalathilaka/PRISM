@@ -6,12 +6,12 @@ FastAPI application entry point.
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -68,9 +68,11 @@ app.include_router(analyses_router, prefix="/api/analyses", tags=["analyses"])
 local_fe_path = Path(__file__).resolve().parent.parent.parent / "frontend" / "out"
 prod_fe_path = Path.home() / "frontend" / "out"
 
+
 @app.get("/")
 async def root():
     return RedirectResponse(url="/dashboard")
+
 
 @app.get("/dashboard")
 async def serve_dashboard():
@@ -79,6 +81,7 @@ async def serve_dashboard():
     elif (local_fe_path / "dashboard.html").exists():
         return FileResponse(local_fe_path / "dashboard.html")
     return {"error": "Frontend not built yet. Run npm run build."}
+
 
 # Mount frontend static files
 # In production, the frontend out folder will be placed at ~/frontend/out,
@@ -91,4 +94,3 @@ if prod_fe_path.exists():
     app.mount("/", StaticFiles(directory=str(prod_fe_path), html=True), name="frontend")
 elif local_fe_path.exists():
     app.mount("/", StaticFiles(directory=str(local_fe_path), html=True), name="frontend")
-

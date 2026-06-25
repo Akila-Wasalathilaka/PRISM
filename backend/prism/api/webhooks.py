@@ -207,7 +207,7 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
 
         # 1. Fetch Diff
         diff_text = await get_pull_request_diff(repo_full_name, pr_number, install_id)
-        
+
         # 1.5 Filter out irrelevant files (docs, lockfiles, self-rules)
         filtered_diff_text = filter_diff(diff_text)
 
