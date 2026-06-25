@@ -57,11 +57,11 @@ jobs:
             # Restart the uvicorn server via tmux
             tmux kill-session -t backend 2>/dev/null || true
             tmux new-session -d -s backend \
-              'cd ~/backend && .venv/bin/uvicorn prism.main:app --host 0.0.0.0 --port 8000 2>&1 | tee server.log'
+              'cd ~/backend && .venv/bin/uvicorn prism.main:app --host 0.0.0.0 --port 8001 2>&1 | tee server.log'
 
             # Wait for startup and verify
             sleep 4
-            if curl -sf http://localhost:8000/api/health > /dev/null; then
+            if curl -sf http://localhost:8001/api/health > /dev/null; then
               echo "✅ Backend deployed and healthy"
             else
               echo "❌ Health check failed — check server.log"
