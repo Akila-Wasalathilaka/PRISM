@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, Request
 from prism.config import settings
 from prism.core.rate_limiter import limiter
 from prism.core.risk_engine.ai_reviewer import AIReviewer
-from prism.core.risk_engine.diff_parser import parse_diff
+from prism.core.risk_engine.diff_parser import filter_diff, parse_diff
 from prism.core.risk_engine.impact import ImpactAnalyzer
 from prism.core.risk_engine.patterns import PatternDetector, RiskMatch
 from prism.core.risk_engine.scoring import RiskScorer
@@ -207,13 +207,16 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
 
         # 1. Fetch Diff
         diff_text = await get_pull_request_diff(repo_full_name, pr_number, install_id)
+        
+        # 1.5 Filter out irrelevant files (docs, lockfiles, self-rules)
+        filtered_diff_text = filter_diff(diff_text)
 
         # 2. Parse the diff into structured data
-        parsed_diff = parse_diff(diff_text)
+        parsed_diff = parse_diff(filtered_diff_text)
 
         # 3. Run pattern detection and AI review in PARALLEL
         async def _run_pattern_detection() -> list[RiskMatch]:
-            risks = PatternDetector.detect_risks(diff_text)
+            risks = PatternDetector.detect_risks(filtered_diff_text)
             for diff_file in parsed_diff.files:
                 file_risks = PatternDetector.detect_risks_per_file(
                     diff_file.filename, diff_file.added_lines, diff_file.added_line_numbers
@@ -222,7 +225,7 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
             return risks
 
         async def _run_ai_review() -> list[RiskMatch]:
-            return await AIReviewer.analyze_diff(diff_text)
+            return await AIReviewer.analyze_diff(filtered_diff_text)
 
         pattern_risks, ai_risks = await asyncio.gather(_run_pattern_detection(), _run_ai_review())
         all_risks = pattern_risks + ai_risks
