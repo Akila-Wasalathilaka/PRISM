@@ -4,6 +4,8 @@
 
 PRISM is a self-hostable GitHub App that automatically analyzes pull requests for security vulnerabilities, destructive database migrations, hardcoded secrets, and codebase impact. It acts as an autonomous reviewer and gatekeeper.
 
+![PRISM Dashboard](docs/dashboard.png)
+
 ## Features
 
 - **Multi-Provider AI Analysis**: Bring your own AI! Supports Mistral, OpenAI, Google Gemini, Anthropic, Ollama (local/free), or any custom OpenAI-compatible endpoint.
