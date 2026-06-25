@@ -4,6 +4,8 @@
 
 PRISM is a self-hostable GitHub App that automatically analyzes pull requests for security vulnerabilities, destructive database migrations, hardcoded secrets, and codebase impact. It acts as an autonomous reviewer and gatekeeper.
 
+**Live Demo Dashboard**: [http://161.118.189.191:8000/dashboard](http://161.118.189.191:8000/dashboard)
+
 ![PRISM Dashboard](docs/dashboard.png)
 
 ## Features
