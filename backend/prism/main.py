@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from slowapi import _rate_limit_exceeded_handler
@@ -63,11 +64,25 @@ app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(webhooks_router, prefix="/api/webhooks", tags=["webhooks"])
 app.include_router(analyses_router, prefix="/api/analyses", tags=["analyses"])
 
+# Serve Dashboard Routes explicitly (to handle extensionless paths)
+local_fe_path = Path(__file__).resolve().parent.parent.parent / "frontend" / "out"
+prod_fe_path = Path.home() / "frontend" / "out"
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/dashboard")
+
+@app.get("/dashboard")
+async def serve_dashboard():
+    if (prod_fe_path / "dashboard.html").exists():
+        return FileResponse(prod_fe_path / "dashboard.html")
+    elif (local_fe_path / "dashboard.html").exists():
+        return FileResponse(local_fe_path / "dashboard.html")
+    return {"error": "Frontend not built yet. Run npm run build."}
+
 # Mount frontend static files
 # In production, the frontend out folder will be placed at ~/frontend/out,
 # which is parallel to ~/backend.
-# So from backend/prism/main.py, the path is ../../../frontend/out
-# If running locally, it might be in ../frontend/out relative to the backend root.
 # Let's try both paths (local dev vs production).
 local_fe_path = Path(__file__).resolve().parent.parent.parent / "frontend" / "out"
 prod_fe_path = Path.home() / "frontend" / "out"
