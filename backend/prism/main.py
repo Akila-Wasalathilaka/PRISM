@@ -9,6 +9,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -60,3 +62,18 @@ app.add_middleware(
 app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(webhooks_router, prefix="/api/webhooks", tags=["webhooks"])
 app.include_router(analyses_router, prefix="/api/analyses", tags=["analyses"])
+
+# Mount frontend static files
+# In production, the frontend out folder will be placed at ~/frontend/out,
+# which is parallel to ~/backend.
+# So from backend/prism/main.py, the path is ../../../frontend/out
+# If running locally, it might be in ../frontend/out relative to the backend root.
+# Let's try both paths (local dev vs production).
+local_fe_path = Path(__file__).resolve().parent.parent.parent / "frontend" / "out"
+prod_fe_path = Path.home() / "frontend" / "out"
+
+if prod_fe_path.exists():
+    app.mount("/", StaticFiles(directory=str(prod_fe_path), html=True), name="frontend")
+elif local_fe_path.exists():
+    app.mount("/", StaticFiles(directory=str(local_fe_path), html=True), name="frontend")
+
