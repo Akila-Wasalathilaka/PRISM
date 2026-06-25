@@ -16,6 +16,7 @@ from prism.core.risk_engine.llm_provider import get_provider_name
 router = APIRouter()
 
 
+@router.get("")
 @router.get("/")
 @limiter.limit("60/minute")
 async def list_analyses(request: Request, limit: int = 20) -> list[dict[str, Any]]:
