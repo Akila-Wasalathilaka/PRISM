@@ -28,6 +28,7 @@ dependencies = [
     "passlib>=1.7.4",
     "python-multipart>=0.0.12",
     "structlog>=24.4.0",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]

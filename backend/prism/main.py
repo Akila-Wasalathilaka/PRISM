@@ -9,11 +9,15 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from prism.api.analyses import router as analyses_router
 from prism.api.health import router as health_router
 from prism.api.webhooks import router as webhooks_router
 from prism.config import settings
+from prism.core.rate_limiter import limiter
 
 
 @asynccontextmanager
@@ -37,6 +41,11 @@ app = FastAPI(
     redoc_url="/api/redoc" if settings.ENVIRONMENT != "production" else None,
     lifespan=lifespan,
 )
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # CORS — restrict in production
 app.add_middleware(

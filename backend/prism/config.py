@@ -34,11 +34,15 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_SECRET: str = ""
     GITHUB_WEBHOOK_SECRET: str = ""
 
-    # ── LLM ──
+    # ── LLM Providers (set ONE — auto-detected in priority order) ──
+    OPENAI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
-    LLM_TIER2_MODEL: str = "gemini-2.0-flash"
-    LLM_TIER3_MODEL: str = "gemini-2.5-pro"
+    OLLAMA_URL: str = ""  # e.g. http://localhost:11434
+    CUSTOM_LLM_URL: str = ""
+    CUSTOM_LLM_KEY: str = ""
+    CUSTOM_LLM_MODEL: str = ""
 
     # ── Auth ──
     JWT_SECRET_KEY: str = "dev-secret-change-in-production"

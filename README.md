@@ -1,137 +1,80 @@
-<div align="center">
+# PRISM 🛡️
 
-# 🔷 PRISM
+**Pull Request Risk & Intelligence System**
 
-### Pull Request Risk & Intelligence System
+PRISM is a self-hostable GitHub App that automatically analyzes pull requests for security vulnerabilities, destructive database migrations, hardcoded secrets, and codebase impact. It acts as an autonomous reviewer and gatekeeper.
 
-**Know before you merge.**
+## Features
 
-PRISM tells you the deployment risk of every pull request — before a single reviewer opens it.
+- **Multi-Provider AI Analysis**: Bring your own AI! Supports Mistral, OpenAI, Google Gemini, Anthropic, Ollama (local/free), or any custom OpenAI-compatible endpoint.
+- **Deterministic Risk Engine**: Hardcoded pattern matching for critical security risks (e.g. AWS Keys, `DROP TABLE`).
+- **Dashboard**: Real-time project progress, risk trends, and bot analytics.
+- **Auto-Merge**: Safely merges 0-risk PRs with low blast radius automatically.
+- **Security Hardened**: Rate limited, webhook signature validation, caching, and payload protection.
 
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
-[![Built with FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)](https://fastapi.tiangolo.com)
-[![Built with Next.js](https://img.shields.io/badge/Frontend-Next.js-000000?logo=next.js)](https://nextjs.org)
+## Self-Hosting Guide
 
-</div>
+Deploying PRISM is easy with Docker Compose.
 
----
-
-## What is PRISM?
-
-PRISM is **not** another AI code review tool. It's a **deployment risk intelligence system** that identifies architecture impact, dependency dangers, migration risks, and historical incident patterns to surface the PRs that cause outages — before they're merged.
-
-### What makes it different?
-
-| Every other tool asks: | PRISM asks: |
-|:---|:---|
-| "Is this code correct?" | "Is this code **safe to deploy**?" |
-| "Does this follow style guides?" | "Does this **cross critical boundaries**?" |
-| "Are there vulnerabilities?" | "Will this **cause an incident**?" |
-
-### Core Features
-
-- 🎯 **Deployment Risk Scoring** — Every PR gets a risk score (0–100) based on what it touches
-- 🏗️ **Architecture Intelligence** — Detects boundary violations and cross-module impact
-- 💥 **Blast Radius Analysis** — Maps which services and teams are affected
-- 📊 **Historical Correlation** — "The last time someone touched auth + migrations, it caused a P1"
-- 🤖 **AI-Powered Analysis** — LLM enrichment for high-risk PRs (Gemini + Mistral)
-- 📈 **Risk Analytics** — Trends, heatmaps, and team-level insights
-
-## Tech Stack
-
-| Layer | Technology |
-|:---|:---|
-| **Frontend** | Next.js 15 (App Router), TypeScript, React |
-| **Backend** | FastAPI, Python 3.12, SQLAlchemy (async) |
-| **Database** | PostgreSQL 16, Redis 7 |
-| **AI** | Gemini 2.0 Flash / 2.5 Pro, Mistral Small / Large |
-| **Infrastructure** | Docker, Cloudflare (Pages + Workers + R2), Terraform |
-| **CI/CD** | GitHub Actions |
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 22+
-- Python 3.12+
+### 1. Requirements
 - Docker & Docker Compose
+- A GitHub App (see below)
 
-### 1. Clone & Setup
+### 2. Setup
+
+Use the interactive setup script to generate your `.env` configuration:
 
 ```bash
-git clone https://github.com/your-username/prism.git
-cd prism
-cp .env.example .env
+python setup.py
 ```
 
-### 2. Start Infrastructure
+The script will guide you through:
+1. Entering your GitHub App credentials
+2. Choosing your AI provider (e.g., Gemini, Mistral, OpenAI, Ollama) and entering the API key
+
+### 3. Run
+
+Once your `.env` file is generated, start the entire stack:
 
 ```bash
 docker compose up -d
 ```
 
-### 3. Backend
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -e ".[dev,test]"
-alembic upgrade head
-uvicorn prism.main:app --reload --port 8000
-```
-
-### 4. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 5. Open
-
-- **Frontend:** http://localhost:3000
-- **API Docs:** http://localhost:8000/api/docs
-- **Health Check:** http://localhost:8000/api/health
-
-## Project Structure
-
-```
-prism/
-├── frontend/          # Next.js app (TypeScript)
-├── backend/           # FastAPI app (Python)
-│   ├── prism/
-│   │   ├── api/       # API routes
-│   │   ├── core/      # Risk engine, architecture analyzer, LLM
-│   │   ├── db/        # Database models, sessions, migrations
-│   │   └── workers/   # Background processing
-│   └── tests/
-├── infrastructure/    # Terraform, Docker configs
-├── docs/              # Architecture docs, ADRs
-├── risk-patterns/     # Community risk detection rules
-└── docker-compose.yml # Local dev dependencies
-```
-
-## Architecture
-
-PRISM uses a **tiered analysis approach**:
-
-1. **Deterministic Layer** (free, <100ms) — File classification, pattern matching, scoring
-2. **LLM Enrichment** (paid, only for risky PRs) — Contextual analysis, explanations, suggestions
-
-This means 70–80% of PRs are analyzed with zero LLM cost.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, and PR guidelines.
-
-## License
-
-PRISM is licensed under [AGPL-3.0](LICENSE). Commercial licenses are available for organizations that need to embed PRISM without AGPL obligations.
+Your PRISM backend will be running on `http://localhost:8000` and the Postgres/Redis services will automatically start.
 
 ---
 
-<div align="center">
-  <sub>Built with 🔷 by the PRISM community</sub>
-</div>
+## Setting up the GitHub App
+
+1. Go to your GitHub account/organization settings -> **Developer Settings** -> **GitHub Apps**
+2. Click **New GitHub App**
+3. **Webhook URL**: `http://<your-server-ip>:8000/api/webhooks/github` (Use ngrok for local testing)
+4. **Permissions**:
+   - `Pull Requests`: Read & Write
+   - `Checks`: Read & Write
+   - `Contents`: Read-only
+5. **Events**: Check `Pull request`
+6. Generate a private key and save the `.pem` file.
+
+---
+
+## AI Providers
+
+PRISM will auto-detect the provider based on which API key is present in your `.env` file (configured via `setup.py`). 
+
+- **Mistral**: Free tier available at `console.mistral.ai`
+- **Gemini**: Free tier available at `aistudio.google.com`
+- **OpenAI**: Requires paid account at `platform.openai.com`
+- **Anthropic**: Requires paid account at `console.anthropic.com`
+- **Ollama**: Completely free and runs locally (`ollama.com`)
+
+If no AI provider is configured, PRISM will gracefully fall back to **Deterministic Only** mode, running regex-based pattern matching without external API calls.
+
+## Development
+
+```bash
+cd backend
+pip install -e ".[dev]"
+pytest
+ruff check .
+```

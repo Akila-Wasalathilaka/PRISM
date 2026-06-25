@@ -11,6 +11,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from prism.config import settings
+from prism.core.risk_engine.llm_provider import get_provider_name
 
 router = APIRouter()
 
@@ -21,6 +22,7 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     environment: str
+    llm_provider: str
     timestamp: str
 
 
@@ -44,6 +46,7 @@ async def health_check() -> HealthResponse:
         status="healthy",
         version=settings.APP_VERSION,
         environment=settings.ENVIRONMENT,
+        llm_provider=get_provider_name(),
         timestamp=datetime.now(UTC).isoformat(),
     )
 

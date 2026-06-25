@@ -3,60 +3,78 @@ PRISM GitHub Webhooks API.
 Receives GitHub App webhook events, verifies signatures, and triggers risk analysis.
 """
 
+import asyncio
 import hashlib
 import hmac
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, HTTPException, Request
 
 from prism.config import settings
+from prism.core.rate_limiter import limiter
 from prism.core.risk_engine.ai_reviewer import AIReviewer
 from prism.core.risk_engine.diff_parser import parse_diff
 from prism.core.risk_engine.impact import ImpactAnalyzer
 from prism.core.risk_engine.patterns import PatternDetector, RiskMatch
 from prism.core.risk_engine.scoring import RiskScorer
-from prism.integrations.github import get_pull_request_diff, merge_pull_request, post_pr_comment
+from prism.integrations.github import (
+    get_pull_request_diff,
+    merge_pull_request,
+    post_pr_comment,
+)
 from prism.integrations.github_checks import GitHubCheckRunAPI
 
+logger = structlog.get_logger()
 router = APIRouter()
 
-DB_FILE = Path("dashboard_db.json")
+# ── Persistent Storage ──
+_data_dir = Path(os.environ.get("PRISM_DATA_DIR", "."))
+DB_FILE = _data_dir / "dashboard_db.json"
+
+# ── Analysis Cache (repo:pr:sha → result) ──
+_analysis_cache: dict[str, dict[str, Any]] = {}
+MAX_CACHE_SIZE = 200
 
 
 def load_analyses() -> list[dict[str, Any]]:
     if DB_FILE.exists():
         try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
+            with open(DB_FILE, encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Error loading dashboard DB: {e}")
+            logger.error("dashboard_db.load_error", error=str(e))
     return []
 
 
 def save_analyses(analyses: list[dict[str, Any]]) -> None:
     try:
+        _data_dir.mkdir(parents=True, exist_ok=True)
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(analyses, f, indent=2)
     except Exception as e:
-        print(f"Error saving dashboard DB: {e}")
+        logger.error("dashboard_db.save_error", error=str(e))
 
 
 # Persistent store for dashboard
 recent_analyses: list[dict[str, Any]] = load_analyses()
 
+# ── Payload size limit (1 MB) ──
+MAX_PAYLOAD_SIZE = 1_048_576
+
 
 def _verify_signature(payload_body: bytes, signature_header: str | None) -> bool:
-    """Verify the webhook payload using HMAC-SHA256.
-
-    If GITHUB_WEBHOOK_SECRET is not configured, verification is skipped
-    to allow development without a secret.
-    """
+    """Verify the webhook payload using HMAC-SHA256."""
     secret = settings.GITHUB_WEBHOOK_SECRET
     if not secret:
-        # No secret configured — skip verification (dev mode)
+        # No secret configured — skip verification (dev mode only)
+        if settings.ENVIRONMENT == "production":
+            logger.warning("webhook.no_secret_in_production")
+            return False
         return True
 
     if not signature_header:
@@ -105,7 +123,7 @@ def _generate_impact_report(
     if all_risks:
         lines.append("")
         lines.append("### 🚨 Detected Issues")
-        seen = set()
+        seen: set[str] = set()
         severity_icon = {"critical": "🔥", "high": "🔴", "medium": "🟡", "low": "⚪"}
         for risk in all_risks:
             key = f"{risk.message}:{risk.filename}"
@@ -130,33 +148,37 @@ def _generate_impact_report(
         )
     else:
         lines.append(
-            "⚠️ **Action Required:** PRISM has detected potential issues in this Pull Request. Please review the detailed list above, or click the **Checks** tab to see exact line-by-line annotations in the code before merging."
+            "⚠️ **Action Required:** PRISM has detected potential issues in this Pull Request. "
+            "Please review the detailed list above, or click the **Checks** tab to see exact "
+            "line-by-line annotations in the code before merging."
         )
 
     return "\n".join(lines)
 
 
 @router.post("/github")
+@limiter.limit("30/minute")
 async def github_webhook_receiver(request: Request) -> dict[str, Any]:
-    """
-    Receive webhook events from GitHub App.
-    """
-    # 1. Verify webhook signature
+    """Receive webhook events from GitHub App."""
+    # 1. Enforce payload size limit
     body = await request.body()
-    signature = request.headers.get("x-hub-signature-256")
+    if len(body) > MAX_PAYLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Payload too large")
 
+    # 2. Verify webhook signature
+    signature = request.headers.get("x-hub-signature-256")
     if not _verify_signature(body, signature):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     event_type = request.headers.get("x-github-event")
 
-    # 2. Parse payload
+    # 3. Parse payload
     try:
         payload = await request.json()
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid JSON payload") from e
 
-    # 3. Process pull request events
+    # 4. Process pull request events
     if event_type == "pull_request" and payload.get("action") in (
         "opened",
         "synchronize",
@@ -169,23 +191,41 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
         install_id = payload["installation"]["id"]
         author = payload["pull_request"]["user"]["login"]
 
+        # ── Cache check: skip if same SHA already analyzed ──
+        cache_key = f"{repo_full_name}:{pr_number}:{head_sha}"
+        if cache_key in _analysis_cache:
+            logger.info("webhook.cache_hit", repo=repo_full_name, pr=pr_number)
+            return _analysis_cache[cache_key]
+
+        logger.info(
+            "webhook.analyzing",
+            repo=repo_full_name,
+            pr=pr_number,
+            sha=head_sha[:8],
+            author=author,
+        )
+
         # 1. Fetch Diff
         diff_text = await get_pull_request_diff(repo_full_name, pr_number, install_id)
 
         # 2. Parse the diff into structured data
         parsed_diff = parse_diff(diff_text)
 
-        # 3. Detect risks — both global and per-file with line numbers
-        all_risks = PatternDetector.detect_risks(diff_text)
-        for diff_file in parsed_diff.files:
-            file_risks = PatternDetector.detect_risks_per_file(
-                diff_file.filename, diff_file.added_lines, diff_file.added_line_numbers
-            )
-            all_risks.extend(file_risks)
+        # 3. Run pattern detection and AI review in PARALLEL
+        async def _run_pattern_detection() -> list[RiskMatch]:
+            risks = PatternDetector.detect_risks(diff_text)
+            for diff_file in parsed_diff.files:
+                file_risks = PatternDetector.detect_risks_per_file(
+                    diff_file.filename, diff_file.added_lines, diff_file.added_line_numbers
+                )
+                risks.extend(file_risks)
+            return risks
 
-        # 3.5 AI Semantic Code Review
-        ai_risks = await AIReviewer.analyze_diff(diff_text)
-        all_risks.extend(ai_risks)
+        async def _run_ai_review() -> list[RiskMatch]:
+            return await AIReviewer.analyze_diff(diff_text)
+
+        pattern_risks, ai_risks = await asyncio.gather(_run_pattern_detection(), _run_ai_review())
+        all_risks = pattern_risks + ai_risks
 
         # 4. Calculate comprehensive score and structural impact
         score_data = RiskScorer.score_from_diff(parsed_diff, all_risks)
@@ -201,16 +241,18 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
             try:
                 await merge_pull_request(repo_full_name, pr_number, install_id)
                 merged = True
+                logger.info("webhook.auto_merged", repo=repo_full_name, pr=pr_number)
             except Exception as e:
-                # Log the error but don't fail the webhook response
-                print(f"Failed to auto-merge PR #{pr_number}: {e}")
+                logger.error(
+                    "webhook.merge_failed", repo=repo_full_name, pr=pr_number, error=str(e)
+                )
 
         # 7. Post the Impact Report as a PR comment
         report_md = _generate_impact_report(score_data, impact_data, merged, all_risks)
         try:
             await post_pr_comment(repo_full_name, pr_number, install_id, report_md)
         except Exception as e:
-            print(f"Failed to post PR comment on #{pr_number}: {e}")
+            logger.error("webhook.comment_failed", repo=repo_full_name, pr=pr_number, error=str(e))
 
         # 8. Store analysis for dashboard
         analysis_record = {
@@ -219,6 +261,7 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
             "pr_title": pr_title,
             "author": author,
             "score": score_data["score"],
+            "merged": merged,
             "breakdown": score_data.get("breakdown", {}),
             "categories": score_data.get("categories", []),
             "risk_count": len(all_risks),
@@ -228,11 +271,27 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
             "timestamp": datetime.now(UTC).isoformat(),
         }
         recent_analyses.insert(0, analysis_record)
-        # Keep only last 500 analyses in memory and storage
         if len(recent_analyses) > 500:
             recent_analyses.pop()
         save_analyses(recent_analyses)
 
-        return {"status": "processed", "score": score_data["score"], "merged": merged}
+        # Cache the result
+        result = {"status": "processed", "score": score_data["score"], "merged": merged}
+        _analysis_cache[cache_key] = result
+        if len(_analysis_cache) > MAX_CACHE_SIZE:
+            # Evict oldest entry
+            oldest_key = next(iter(_analysis_cache))
+            del _analysis_cache[oldest_key]
+
+        logger.info(
+            "webhook.completed",
+            repo=repo_full_name,
+            pr=pr_number,
+            score=score_data["score"],
+            merged=merged,
+            risks=len(all_risks),
+        )
+
+        return result
 
     return {"status": "accepted", "event": event_type}

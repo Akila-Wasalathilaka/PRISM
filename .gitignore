@@ -60,6 +60,7 @@ infrastructure/terraform/**/*.tfvars
 *.key
 *.key.pub
 backend.tar.gz
+dashboard_db.json
 
 # ── Logs ──
 *.log
