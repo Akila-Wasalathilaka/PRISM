@@ -2,7 +2,7 @@ name: PRISM CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
   pull_request:
     branches: [main]
 
@@ -50,7 +50,7 @@ jobs:
           cache: "pip"
 
       - name: Install Dependencies
-        run: pip install -e ".[dev,test]"
+        run: pip install ".[dev,test]"
 
       - name: Lint (Ruff)
         run: ruff check .
@@ -84,11 +84,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Lint (ESLint)
         run: npm run lint

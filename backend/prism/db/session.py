@@ -2,8 +2,8 @@
 PRISM Database Session — Async SQLAlchemy engine and session management.
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from prism.config import settings
 

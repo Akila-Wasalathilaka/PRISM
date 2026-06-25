@@ -1,0 +1,78 @@
+name: Deploy Backend to Oracle Cloud
+
+on:
+  push:
+    branches:
+      - main
+      - development
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ORACLE_SSH_KEY }}" > ~/.ssh/oracle_key
+          chmod 600 ~/.ssh/oracle_key
+          ssh-keyscan -H "${{ secrets.ORACLE_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy to Oracle
+        env:
+          HOST: ${{ secrets.ORACLE_HOST }}
+        run: |
+          SSH_CMD="ssh -i ~/.ssh/oracle_key -o StrictHostKeyChecking=no ubuntu@$HOST"
+
+          # Create staging directory on remote
+          $SSH_CMD "mkdir -p ~/backend-update"
+
+          # Upload backend code via scp
+          scp -i ~/.ssh/oracle_key -o StrictHostKeyChecking=no -r backend/* ubuntu@$HOST:~/backend-update/
+
+          # SSH in: swap files, install deps, restart server
+          $SSH_CMD << 'DEPLOY'
+            set -e
+
+            # Sync new code over (preserve .venv, .env, server.log, and dashboard_db.json)
+            rsync -a --exclude='.venv' --exclude='.env' --exclude='__pycache__' --exclude='server.log' --exclude='dashboard_db.json' \
+              ~/backend-update/ ~/backend/
+
+            # Securely inject the Mistral API key from GitHub Secrets
+            sed -i '/^MISTRAL_API_KEY=/d' ~/backend/.env || true
+            echo 'MISTRAL_API_KEY="${{ secrets.MISTRAL_API_KEY }}"' >> ~/backend/.env
+
+            # Install any new/updated dependencies
+
+            cd ~/backend
+            .venv/bin/pip install . --quiet 2>&1 | tail -5
+
+            # Restart the uvicorn server via tmux
+            tmux kill-session -t backend 2>/dev/null || true
+            tmux new-session -d -s backend \
+              'cd ~/backend && .venv/bin/uvicorn prism.main:app --host 0.0.0.0 --port 8000 2>&1 | tee server.log'
+
+            # Wait for startup and verify
+            sleep 4
+            if curl -sf http://localhost:8000/api/health > /dev/null; then
+              echo "✅ Backend deployed and healthy"
+            else
+              echo "❌ Health check failed — check server.log"
+              cat server.log
+              exit 1
+            fi
+
+            # Cleanup staging directory
+            rm -rf ~/backend-update
+          DEPLOY
+
+      - name: Cleanup SSH Key
+        if: always()
+        run: rm -f ~/.ssh/oracle_key

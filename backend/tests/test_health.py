@@ -3,6 +3,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from prism.config import settings
 from prism.main import app
 
 
@@ -23,7 +24,7 @@ async def test_health_check(client: AsyncClient):
     data = response.json()
     assert data["status"] == "healthy"
     assert data["version"] == "0.1.0"
-    assert data["environment"] == "development"
+    assert data["environment"] == settings.ENVIRONMENT
     assert "timestamp" in data
 
 

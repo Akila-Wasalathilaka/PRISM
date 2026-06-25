@@ -2,21 +2,19 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e "."
+RUN pip install . --no-cache-dir
 
 # Copy application code
-COPY . .
+COPY prism/ prism/
 
-# Create non-root user
-RUN adduser --disabled-password --gecos "" prism
-USER prism
+# Create data directory for persistent storage
+RUN mkdir -p /app/data
+ENV PRISM_DATA_DIR=/app/data
 
 EXPOSE 8000
 
