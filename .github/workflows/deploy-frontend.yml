@@ -50,9 +50,11 @@ jobs:
           # Create frontend directory on remote if it doesn't exist
           $SSH_CMD "mkdir -p ~/frontend"
 
-          # Upload frontend build via scp (sync out folder)
-          # Use rsync to mirror the out folder over SSH
-          rsync -avz -e "ssh -i ~/.ssh/oracle_key -o StrictHostKeyChecking=no" --delete frontend/out/ ubuntu@$HOST:~/frontend/out/
+          # Upload frontend build via scp to a temporary directory
+          rsync -avz -e "ssh -i ~/.ssh/oracle_key -o StrictHostKeyChecking=no" --delete frontend/out/ ubuntu@$HOST:~/frontend/out_new/
+
+          # Atomic swap: Move out -> out_old, out_new -> out
+          $SSH_CMD "rm -rf ~/frontend/out_old && mv ~/frontend/out ~/frontend/out_old 2>/dev/null || true && mv ~/frontend/out_new ~/frontend/out"
 
       - name: Cleanup SSH Key
         if: always()
