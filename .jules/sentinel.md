@@ -1,0 +1,4 @@
+## 2025-06-28 - Authorization Bypass in Auto-Merge Feature
+**Vulnerability:** The PRISM webhook handler unconditionally auto-merged any pull request with a risk score of 0 and low blast radius. This allowed any external user to push code to the repository (e.g. bypassing security checks in ignored files like documentation or adding small backdoors) without human approval.
+**Learning:** Features that change the state of the repository (like auto-merge) must verify the authorization context of the request, even if the payload is signed by GitHub. The signature only proves the event came from GitHub, not that the author is trusted by the repository owners.
+**Prevention:** Always validate the `author_association` (e.g., `OWNER`, `MEMBER`, `COLLABORATOR`) for pull request events before performing automated repository-modifying actions.
