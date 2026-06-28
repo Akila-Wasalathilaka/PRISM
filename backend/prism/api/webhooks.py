@@ -240,7 +240,11 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
 
         # 6. Auto-merge if risk score is 0 and blast radius is low
         merged = False
-        if score_data["score"] == 0 and impact_data["blast_radius"] == "Low":
+        # SECURITY: Only auto-merge if the author is a trusted member of the repository
+        author_association = payload["pull_request"].get("author_association", "NONE")
+        is_trusted = author_association in ("OWNER", "MEMBER", "COLLABORATOR")
+
+        if score_data["score"] == 0 and impact_data["blast_radius"] == "Low" and is_trusted:
             try:
                 await merge_pull_request(repo_full_name, pr_number, install_id)
                 merged = True
