@@ -100,7 +100,7 @@ def parse_diff(raw_diff: str) -> ParsedDiff:
 
 def filter_diff(raw_diff: str) -> str:
     """Filter out irrelevant files from the raw diff text.
-    
+
     This prevents the AI and pattern detector from flagging false positives
     in documentation, lockfiles, or the rules engine itself.
     """
@@ -116,30 +116,30 @@ def filter_diff(raw_diff: str) -> str:
         "backend/prism/core/risk_engine/patterns.py",  # Prevent self-matching
         "scratch/*"
     ]
-    
+
     file_sections = _DIFF_FILE_RE.split(raw_diff)
     if len(file_sections) < 4:
         return raw_diff
-        
+
     filtered_diff = [file_sections[0]]  # Add preamble
-    
+
     i = 1
     while i + 2 < len(file_sections):
         old_path = file_sections[i]
         new_path = file_sections[i + 1]
         content = file_sections[i + 2]
-        
+
         # Check if the new path matches any ignore pattern
         should_ignore = False
         for pattern in ignore_patterns:
             if fnmatch.fnmatch(new_path, pattern) or fnmatch.fnmatch(new_path, "*/" + pattern):
                 should_ignore = True
                 break
-                
+
         if not should_ignore:
             filtered_diff.append(f"diff --git a/{old_path} b/{new_path}")
             filtered_diff.append(content)
-            
+
         i += 3
-        
+
     return "".join(filtered_diff)
