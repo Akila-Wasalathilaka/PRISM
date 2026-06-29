@@ -50,7 +50,7 @@ jobs:
           cache: "pip"
 
       - name: Install Dependencies
-        run: pip install ".[dev,test]"
+        run: pip install ".[dev,test]" httpx
 
       - name: Lint (Ruff)
         run: ruff check .

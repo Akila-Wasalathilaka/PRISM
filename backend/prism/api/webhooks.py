@@ -216,6 +216,8 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
 
         # 3. Run pattern detection and AI review in PARALLEL
         async def _run_pattern_detection() -> list[RiskMatch]:
+            if not filtered_diff_text.strip():
+                return []
             risks = PatternDetector.detect_risks(filtered_diff_text)
             for diff_file in parsed_diff.files:
                 file_risks = PatternDetector.detect_risks_per_file(
@@ -225,6 +227,8 @@ async def github_webhook_receiver(request: Request) -> dict[str, Any]:
             return risks
 
         async def _run_ai_review() -> list[RiskMatch]:
+            if not filtered_diff_text.strip():
+                return []
             return await AIReviewer.analyze_diff(filtered_diff_text)
 
         pattern_risks, ai_risks = await asyncio.gather(_run_pattern_detection(), _run_ai_review())

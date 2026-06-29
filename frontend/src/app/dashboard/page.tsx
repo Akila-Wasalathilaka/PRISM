@@ -28,6 +28,14 @@ interface Stats {
   top_authors: { name: string; count: number }[];
   risk_trend: { day: string; date: string; avg_score: number; count: number }[];
   llm_provider: string;
+  project_stats: {
+    repo: string;
+    pr_count: number;
+    avg_score: number;
+    safe_prs: number;
+    auto_merged: number;
+    critical_risks: number;
+  }[];
 }
 
 export default function Dashboard() {
@@ -426,6 +434,51 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Project Performance Section */}
+        {!loading && stats && stats.project_stats && stats.project_stats.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              Project Performance
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {stats.project_stats.map((proj) => (
+                <div key={proj.repo} className="bg-[#161616] border border-gray-800 rounded-xl p-4 shadow-sm flex flex-col hover:border-gray-700 transition-colors">
+                  <div className="text-sm font-bold text-gray-300 truncate mb-3" title={proj.repo}>
+                    {proj.repo.split("/").pop()}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="bg-[#1e1e1e] rounded-lg p-2 border border-gray-800/50 flex flex-col justify-center items-center">
+                      <div className="text-[10px] text-gray-500">PRs</div>
+                      <div className="text-sm font-bold text-gray-200">{proj.pr_count}</div>
+                    </div>
+                    <div className="bg-[#1e1e1e] rounded-lg p-2 border border-gray-800/50 flex flex-col justify-center items-center">
+                      <div className="text-[10px] text-gray-500">Avg Score</div>
+                      <div className={`text-sm font-bold ${proj.avg_score === 0 ? "text-green-500" : proj.avg_score < 30 ? "text-gray-300" : proj.avg_score < 50 ? "text-orange-400" : "text-red-500"}`}>
+                        {proj.avg_score}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center text-xs px-1">
+                    <div className="flex gap-1.5 items-center">
+                      <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                      <span className="text-gray-400">Safe: {proj.safe_prs}</span>
+                    </div>
+                    {proj.critical_risks > 0 && (
+                      <div className="flex gap-1.5 items-center">
+                        <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+                        <span className="text-red-400 font-medium">Critical: {proj.critical_risks}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
