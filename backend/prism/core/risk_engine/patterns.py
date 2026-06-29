@@ -45,12 +45,30 @@ _PATTERNS: list[tuple[re.Pattern[str], str, str, str]] = [
         "AWS access key detected",
     ),
     (
-        re.compile(r"""-----BEGIN (?:RSA |DSA |EC )?PRIVATE KEY-----"""),
+        re.compile(r"""-----BEGIN (?:RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----"""),
         "critical",
         "security",
         "Private key committed to source code",
     ),
+    (
+        re.compile(r"""(?:eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*)"""),
+        "critical",
+        "security",
+        "Possible JWT token committed to source code",
+    ),
     # ── Security: High ──
+    (
+        re.compile(r"""<script\b[^>]*>[\s\S]*?</script>""", re.IGNORECASE),
+        "high",
+        "security",
+        "Inline script tag detected — potential XSS vector",
+    ),
+    (
+        re.compile(r"""(?:SELECT|INSERT|UPDATE|DELETE)\s+.*\s+(?:WHERE|SET)\s+.*=\s*['"]?\s*\+\s*[a-zA-Z0-9_]+""", re.IGNORECASE),
+        "high",
+        "security",
+        "String concatenation in SQL query — potential SQL injection",
+    ),
     (
         re.compile(r"""\beval\s*\("""),
         "high",

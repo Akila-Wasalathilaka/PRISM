@@ -79,12 +79,41 @@ async def get_stats(request: Request) -> dict[str, Any]:
     # 7-day risk trend
     risk_trend = _calculate_risk_trend()
 
+    # Project-wise Stats
+    project_stats = []
+    repo_groups = {}
+    for a in recent_analyses:
+        repo = a["repo"]
+        if repo not in repo_groups:
+            repo_groups[repo] = []
+        repo_groups[repo].append(a)
+
+    for repo, analyses in repo_groups.items():
+        repo_scores = [a["score"] for a in analyses]
+        repo_avg = round(sum(repo_scores) / len(repo_scores), 1) if repo_scores else 0
+        repo_safe = sum(1 for s in repo_scores if s == 0)
+        repo_merged = sum(1 for a in analyses if a.get("merged", a.get("score") == 0))
+        repo_critical = sum(1 for s in repo_scores if s >= 70)
+
+        project_stats.append({
+            "repo": repo,
+            "pr_count": len(analyses),
+            "avg_score": repo_avg,
+            "safe_prs": repo_safe,
+            "auto_merged": repo_merged,
+            "critical_risks": repo_critical
+        })
+
+    # Sort by PR count descending
+    project_stats.sort(key=lambda x: x["pr_count"], reverse=True)
+
     return {
         "total_analyzed": total,
         "avg_score": avg_score,
         "high_risk_count": high_risk,
         "critical_risk_count": critical_risk,
         "recent_repos": repos[:10],
+        "project_stats": project_stats,
         "total_files_analyzed": total_files,
         "total_lines_added": total_added,
         "total_lines_deleted": total_deleted,

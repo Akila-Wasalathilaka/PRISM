@@ -46,6 +46,16 @@ docker compose up -d
 
 Your PRISM backend will be running on `http://localhost:8000` and the Postgres/Redis services will automatically start.
 
+### 4. Deploying to the Cloud
+
+You can easily deploy PRISM to cloud providers like Oracle Cloud, AWS, or DigitalOcean:
+
+1. Spin up an Ubuntu VM on your preferred cloud provider.
+2. Install Docker and Docker Compose on the VM.
+3. Clone this repository to the VM.
+4. Run `python setup.py` and `docker compose up -d` just like in the local setup.
+5. Update your GitHub App Webhook URL to point to your cloud instance's IP or domain (e.g., `http://<your-cloud-ip>:8000/api/webhooks/github`).
+
 ---
 
 ## Setting up the GitHub App
