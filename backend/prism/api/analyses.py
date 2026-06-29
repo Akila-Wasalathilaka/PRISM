@@ -95,14 +95,16 @@ async def get_stats(request: Request) -> dict[str, Any]:
         repo_merged = sum(1 for a in analyses if a.get("merged", a.get("score") == 0))
         repo_critical = sum(1 for s in repo_scores if s >= 70)
 
-        project_stats.append({
-            "repo": repo,
-            "pr_count": len(analyses),
-            "avg_score": repo_avg,
-            "safe_prs": repo_safe,
-            "auto_merged": repo_merged,
-            "critical_risks": repo_critical
-        })
+        project_stats.append(
+            {
+                "repo": repo,
+                "pr_count": len(analyses),
+                "avg_score": repo_avg,
+                "safe_prs": repo_safe,
+                "auto_merged": repo_merged,
+                "critical_risks": repo_critical,
+            }
+        )
 
     # Sort by PR count descending
     project_stats.sort(key=lambda x: x["pr_count"], reverse=True)

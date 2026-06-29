@@ -98,6 +98,7 @@ def parse_diff(raw_diff: str) -> ParsedDiff:
 
     return result
 
+
 def filter_diff(raw_diff: str) -> str:
     """Filter out irrelevant files from the raw diff text.
 
@@ -114,7 +115,7 @@ def filter_diff(raw_diff: str) -> str:
         "pnpm-lock.yaml",
         "*.csv",
         "backend/prism/core/risk_engine/patterns.py",  # Prevent self-matching
-        "scratch/*"
+        "scratch/*",
     ]
 
     file_sections = _DIFF_FILE_RE.split(raw_diff)

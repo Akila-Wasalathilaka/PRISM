@@ -64,7 +64,10 @@ _PATTERNS: list[tuple[re.Pattern[str], str, str, str]] = [
         "Inline script tag detected — potential XSS vector",
     ),
     (
-        re.compile(r"""(?:SELECT|INSERT|UPDATE|DELETE)\s+.*\s+(?:WHERE|SET)\s+.*=\s*['"]?\s*\+\s*[a-zA-Z0-9_]+""", re.IGNORECASE),
+        re.compile(
+            r"""(?:SELECT|INSERT|UPDATE|DELETE)\s+.*\s+(?:WHERE|SET)\s+.*=\s*['"]?\s*\+\s*[a-zA-Z0-9_]+""",
+            re.IGNORECASE,
+        ),
         "high",
         "security",
         "String concatenation in SQL query — potential SQL injection",
