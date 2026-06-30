@@ -321,7 +321,7 @@ export default function Dashboard() {
       </div>
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 p-6 lg:p-10 flex flex-col overflow-y-auto h-screen bg-[#1e1e1e]">
+      <div className="flex-1 p-6 lg:p-10 flex flex-col overflow-y-auto min-h-screen bg-[#1e1e1e]">
         {/* Header */}
         <div className="flex justify-between items-end mb-8 pb-4 border-b border-gray-800">
           <div>
